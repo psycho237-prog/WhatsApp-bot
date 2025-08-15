@@ -56,25 +56,31 @@ client.on('message', async msg => {
         return msg.reply('Hello! I am your WhatsApp bot 🤖');
     }
 
-    // Save "View Once" or any media
+    // Save "View Once" or any media and send back to chat
     if (text === '!save') {
+        let media = null;
+        let fileName = `${Date.now()}`;
+
         if (msg.hasMedia) {
-            const media = await msg.downloadMedia();
-            const filePath = path.join(mediaFolder, `${Date.now()}.${media.mimetype.split('/')[1]}`);
-            fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
-            msg.reply(`✅ Media saved to server: ${filePath}`);
+            media = await msg.downloadMedia();
         } else if (msg.hasQuotedMsg) {
             const quoted = await msg.getQuotedMessage();
             if (quoted.hasMedia) {
-                const media = await quoted.downloadMedia();
-                const filePath = path.join(mediaFolder, `${Date.now()}.${media.mimetype.split('/')[1]}`);
-                fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
-                msg.reply(`✅ Media saved to server: ${filePath}`);
-            } else {
-                msg.reply('⚠️ No media found in the quoted message.');
+                media = await quoted.downloadMedia();
             }
+        }
+
+        if (media) {
+            // Save on Railway
+            const filePath = path.join(mediaFolder, `${fileName}.${media.mimetype.split('/')[1]}`);
+            fs.writeFileSync(filePath, media.data, { encoding: 'base64' });
+
+            // Send media back to chat
+            await client.sendMessage(msg.from, new MessageMedia(media.mimetype, media.data, fileName));
+
+            msg.reply(`✅ Media saved to server and sent back to chat.`);
         } else {
-            msg.reply('⚠️ Send or reply to a "View Once" media with `!save`.');
+            msg.reply('⚠️ No media found. Reply to a "View Once" or media message with `!save`.');
         }
     }
 
